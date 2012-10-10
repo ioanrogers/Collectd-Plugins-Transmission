@@ -1,0 +1,10 @@
+transmission_cum_bytes_down	      value:COUNTER:0:U
+transmission_cum_bytes_up	      value:COUNTER:0:U
+transmission_cur_bytes_down	      value:COUNTER:0:U
+transmission_cur_bytes_up	      value:COUNTER:0:U
+transmission_download_speed       value:GAUGE:0:U
+transmission_upload_speed         value:GAUGE:0:U
+transmission_torrent_count        value:GAUGE:0:U
+transmission_active_torrent_count value:GAUGE:0:U
+transmission_paused_torrent_count value:GAUGE:0:U
+
