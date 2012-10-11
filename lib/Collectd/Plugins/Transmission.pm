@@ -2,24 +2,12 @@ package Collectd::Plugins::Transmission;
 
 # ABSTRACT: collect transmission torrent statistics
 
-use v5.14;
+use v5.10.1;
 use strict;
 use warnings;
 use Collectd qw/:all/;
 use Transmission::Client;
 use Try::Tiny;
-
-my @keys = qw/
-    transmission_cum_bytes_down
-    transmission_cum_bytes_up
-    transmission_cur_bytes_down
-    transmission_cur_bytes_up
-    transmission_download_speed
-    transmission_upload_speed
-    transmission_torrent_count
-    transmission_active_torrent_count
-    transmission_paused_torrent_count
-/;
 
 plugin_register( TYPE_INIT,   'Transmission', 'transmission_init' );
 plugin_register( TYPE_CONFIG, 'Transmission', 'transmission_config' );
@@ -27,6 +15,11 @@ plugin_register( TYPE_READ,   'Transmission', 'transmission_read' );
 
 my $tm_client;
 my $tm_opts  = { autodie => 1, };
+
+my $plug_opts = {
+    use_current_speed     => 0,
+    use_session_bandwidth => 0,
+};
 
 sub transmission_config {
     my $config = shift;
@@ -45,6 +38,20 @@ sub transmission_config {
             }
             when ( 'Password' ) {
                 $tm_opts->{password} = $value;
+            }
+            when ( 'Password' ) {
+                $tm_opts->{password} = $value;
+            }
+            when ( 'UseCurrentSpeed' ) {
+                if ($value == 1 ) {
+                    $plug_opts->{use_current_speed} = 1;
+                }
+            }
+            when ( 'UseSessionBandwidth' ) {
+                if ($value == 1) {
+                    $plug_opts->{use_session_bandwidth} = 1;
+                }
+    
             }
         };
     }
@@ -69,17 +76,25 @@ sub transmission_read {
 
     my %values = (
         transmission_cum_bytes_down       => $stats->{'cumulative-stats'}->{downloadedBytes},
+        transmission_down_speed_avg	      => $stats->{'cumulative-stats'}->{downloadedBytes},
         transmission_cum_bytes_up         => $stats->{'cumulative-stats'}->{uploadedBytes},
-        transmission_cur_bytes_down       => $stats->{'current-stats'}->{downloadedBytes},
-        transmission_cur_bytes_up         => $stats->{'current-stats'}->{uploadedBytes},
-        transmission_download_speed       => $stats->{downloadSpeed},
-        transmission_upload_speed         => $stats->{uploadSpeed},
+        transmission_up_speed_avg         => $stats->{'cumulative-stats'}->{uploadedBytes},
         transmission_torrent_count        => $stats->{torrentCount},
         transmission_active_torrent_count => $stats->{activeTorrentCount},
         transmission_paused_torrent_count => $stats->{pausedTorrentCount},
     );
 
-    foreach my $key (@keys) {
+    if ($plug_opts->{use_session_bandwidth}) {
+        $values{transmission_cur_bytes_down} = $stats->{'current-stats'}->{downloadedBytes};
+        $values{transmission_cur_bytes_up}   = $stats->{'current-stats'}->{uploadedBytes};
+    }
+
+    if ($plug_opts->{use_current_speed}) {
+        $values{transmission_download_speed} = $stats->{downloadSpeed};
+        $values{transmission_upload_speed}   = $stats->{uploadSpeed};  
+    }
+
+    foreach my $key (keys %values) {
         my $vl = {
             plugin   => 'tranmission',
             type     => $key,
@@ -109,6 +124,8 @@ __END__
        URL "http://localhost:9091/transmission/rpc"
        Username "tm_user"
        Password "tm_pass"
+       UseCurrentSpeed true      # defaults to false
+       UseSessionBandwidth true  # defaults to false
     </Plugin>
  </Plugin>
 
